@@ -119,7 +119,7 @@ def skip_fp8_pre_ada(use_fp8):
 
 
 def skip_blackwell_for_fmha_tests(context_fmha_type, head_size):
-    if getSMVersion() == 100 and (head_size not in [32, 64, 128]
+    if getSMVersion() in [100, 103] and (head_size not in [32, 64, 128]
                                   and context_fmha_type
                                   != ContextFMHAType.disabled):
         pytest.skip(

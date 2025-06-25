@@ -159,6 +159,8 @@ def compute_cap_specific_rule(fmha_arg, **kwargs):
         return _sm89_rule(fmha_arg)
     if cc_tag == 90:
         return _sm90_rule(fmha_arg)
+    if cc_tag == 103:
+        return _sm103_rule(fmha_arg)
 
 
 def sm80_only(fmha_arg, **kwargs):
@@ -307,3 +309,9 @@ def _sm90_rule(fmha_arg):
             reason=
             f'sm90_rule: cases not supported for non-flash-attention kernels;. \
             {fmha_arg}')
+
+
+def _sm103_rule(fmha_arg):
+    if 'ENABLE_SM103' not in os.environ:
+        pytest.skip(reason=f'sm103_rule: kernels not generated. {fmha_arg}')
+    _non_sm90_rule(fmha_arg)
