@@ -1,0 +1,4 @@
+# Add proactive KV cache example
+add_executable(proactive_kv_cache_example proactive_kv_cache_example.cpp)
+target_link_libraries(proactive_kv_cache_example tensorrt_llm::tensorrt_llm)
+target_include_directories(proactive_kv_cache_example PRIVATE ${CMAKE_SOURCE_DIR}/cpp/include) 
