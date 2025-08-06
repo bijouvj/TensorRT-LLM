@@ -126,7 +126,7 @@ public:
 
     void addToken(RequestIdType requestId) override;
 
-    void removeSequence(RequestIdType requestId) override;
+    void removeSequence(RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest = std::nullopt) override;
 
     void schedulingReleaseBlocks(RequestIdType requestId) override;
 
@@ -137,8 +137,6 @@ public:
     [[nodiscard]] bool enableBlockReuse() const override;
 
     // Additional methods required by BaseKVCacheManager interface
-    void removeSequence(RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest) override;
-
     void schedulingRemoveSequence(RequestIdType requestId) override;
 
     [[nodiscard]] runtime::ITensor::SharedPtr getBlockPoolPointers() const override;
@@ -231,6 +229,10 @@ private:
     void updateProactiveStats(SizeType32 evictions, SizeType32 preloads, 
                             std::chrono::milliseconds evictionTime, 
                             std::chrono::milliseconds preloadTime);
+
+    // Worker thread management
+    void startProactiveWorker();
+    void stopProactiveWorker();
 
     // Base KV cache manager
     std::unique_ptr<KVCacheManager> mBaseKVCacheManager;

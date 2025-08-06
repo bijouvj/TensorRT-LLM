@@ -152,9 +152,9 @@ void ProactiveKVCacheManager::addToken(RequestIdType requestId)
     mBaseKVCacheManager->addToken(requestId);
 }
 
-void ProactiveKVCacheManager::removeSequence(RequestIdType requestId)
+void ProactiveKVCacheManager::removeSequence(RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest)
 {
-    mBaseKVCacheManager->removeSequence(requestId);
+    mBaseKVCacheManager->removeSequence(requestId, llmRequest);
 }
 
 void ProactiveKVCacheManager::schedulingReleaseBlocks(RequestIdType requestId)
@@ -178,11 +178,6 @@ bool ProactiveKVCacheManager::enableBlockReuse() const
 }
 
 // Additional methods required by BaseKVCacheManager interface
-void ProactiveKVCacheManager::removeSequence(RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest)
-{
-    mBaseKVCacheManager->removeSequence(requestId, llmRequest);
-}
-
 void ProactiveKVCacheManager::schedulingRemoveSequence(RequestIdType requestId)
 {
     mBaseKVCacheManager->schedulingRemoveSequence(requestId);
