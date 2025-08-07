@@ -42,7 +42,7 @@ set(SRCS
     microBatchScheduler.cpp
     pauseRequests.cpp
     peftCacheManager.cpp
-    # proactiveKvCacheManager.cpp  # Temporarily disabled for Docker build
+    proactiveKvCacheManager.cpp
     promptTuningBuffers.cpp
     rnnStateBuffers.cpp
     rnnStateManager.cpp

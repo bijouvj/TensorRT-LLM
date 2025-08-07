@@ -33,6 +33,7 @@ using namespace tensorrt_llm::common;
 
 namespace tensorrt_llm::batch_manager::kv_cache_manager
 {
+using RequestIdType = LlmRequest::RequestIdType;
 
 ProactiveKVCacheManager::ProactiveKVCacheManager(std::vector<SizeType32> const& numKvHeadsPerLayer, SizeType32 sizePerHead,
     SizeType32 tokensPerBlock, SizeType32 blocksInPrimaryPool, SizeType32 blocksInSecondaryPool,
@@ -131,11 +132,6 @@ SizeType32 ProactiveKVCacheManager::getNeededBlocksOneStep(LlmRequest const& req
     return mBaseKVCacheManager->getNeededBlocksOneStep(req, twoStepsLookAhead);
 }
 
-SizeType32 ProactiveKVCacheManager::getNeededBlocksToCompletion(LlmRequest const& req) const
-{
-    return mBaseKVCacheManager->getNeededBlocksToCompletion(req);
-}
-
 SizeType32 ProactiveKVCacheManager::getRemainingBlocksToCompletion(LlmRequest const& req) const
 {
     return mBaseKVCacheManager->getRemainingBlocksToCompletion(req);
@@ -159,22 +155,10 @@ void ProactiveKVCacheManager::removeSequence(RequestIdType requestId, OptionalRe
 
 void ProactiveKVCacheManager::schedulingReleaseBlocks(RequestIdType requestId)
 {
-    mBaseKVCacheManager->schedulingReleaseBlocks(requestId);
-}
-
-SizeType32 ProactiveKVCacheManager::numPools() const
-{
-    return mBaseKVCacheManager->numPools();
-}
-
-SizeType32 ProactiveKVCacheManager::maxBlocksPerSeq() const
-{
-    return mBaseKVCacheManager->maxBlocksPerSeq();
-}
-
-bool ProactiveKVCacheManager::enableBlockReuse() const
-{
-    return mBaseKVCacheManager->enableBlockReuse();
+    // We need to access the non-const version of the block manager
+    // Since we can't directly access the private member, we'll use a different approach
+    // For now, we'll delegate to the base manager's scheduling methods
+    mBaseKVCacheManager->schedulingRemoveSequence(requestId);
 }
 
 // Additional methods required by BaseKVCacheManager interface
@@ -468,7 +452,7 @@ std::vector<BlockPtr> ProactiveKVCacheManager::getEvictionCandidates() const
     
     // Get all blocks from the base manager - we need to access the private member
     // For now, we'll use a different approach by getting blocks through the eviction policy
-    auto const& blockManager = mBaseKVCacheManager->getBlockManager();
+    // auto const& blockManager = mBaseKVCacheManager->getBlockManager();
     
     // We'll need to iterate through allocated blocks differently
     // For now, let's use a simpler approach by checking free blocks and trying to evict

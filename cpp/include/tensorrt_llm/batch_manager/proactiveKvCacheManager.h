@@ -20,6 +20,7 @@
 #include "tensorrt_llm/batch_manager/kvCacheManager.h"
 #include "tensorrt_llm/batch_manager/evictionPolicy.h"
 #include "tensorrt_llm/batch_manager/kvCacheTransferManager.h"
+#include "tensorrt_llm/batch_manager/llmRequest.h"
 #include "tensorrt_llm/runtime/common.h"
 #include "tensorrt_llm/runtime/iTensor.h"
 #include "tensorrt_llm/runtime/bufferManager.h"
@@ -48,31 +49,44 @@ public:
     struct ProactiveConfig
     {
         // Threshold for free blocks in primary memory before proactive eviction starts
-        SizeType32 primaryFreeBlockThreshold = 10;
+        SizeType32 primaryFreeBlockThreshold;
         
         // Threshold for free blocks in secondary memory before proactive eviction starts
-        SizeType32 secondaryFreeBlockThreshold = 5;
+        SizeType32 secondaryFreeBlockThreshold;
         
         // Number of blocks to proactively evict when thresholds are met
-        SizeType32 proactiveEvictionBatchSize = 5;
+        SizeType32 proactiveEvictionBatchSize;
         
         // Minimum time between proactive eviction cycles (milliseconds)
-        std::chrono::milliseconds minEvictionInterval = std::chrono::milliseconds(100);
+        std::chrono::milliseconds minEvictionInterval;
         
         // Maximum time to wait for blocks to become available (milliseconds)
-        std::chrono::milliseconds maxWaitTime = std::chrono::milliseconds(1000);
+        std::chrono::milliseconds maxWaitTime;
         
         // Whether to enable proactive eviction
-        bool enableProactiveEviction = true;
+        bool enableProactiveEviction;
         
         // Priority threshold for proactive eviction (blocks with lower priority will be evicted first)
-        executor::RetentionPriority evictionPriorityThreshold = 50;
+        executor::RetentionPriority evictionPriorityThreshold;
         
         // Whether to preload blocks from secondary to primary when space becomes available
-        bool enablePreloading = true;
+        bool enablePreloading;
         
         // Number of blocks to preload when space becomes available
-        SizeType32 preloadBatchSize = 3;
+        SizeType32 preloadBatchSize;
+
+        ProactiveConfig()
+            : primaryFreeBlockThreshold(10)
+            , secondaryFreeBlockThreshold(5)
+            , proactiveEvictionBatchSize(5)
+            , minEvictionInterval(std::chrono::milliseconds(100))
+            , maxWaitTime(std::chrono::milliseconds(1000))
+            , enableProactiveEviction(true)
+            , evictionPriorityThreshold(50)
+            , enablePreloading(true)
+            , preloadBatchSize(3)
+        {
+        }
     };
 
     ProactiveKVCacheManager(std::vector<SizeType32> const& numKvHeadsPerLayer, SizeType32 sizePerHead,
@@ -117,27 +131,19 @@ public:
 
     [[nodiscard]] SizeType32 getNeededBlocksOneStep(LlmRequest const& req, bool twoStepsLookAhead) const override;
 
-    [[nodiscard]] SizeType32 getNeededBlocksToCompletion(LlmRequest const& req) const override;
-
     [[nodiscard]] SizeType32 getRemainingBlocksToCompletion(LlmRequest const& req) const override;
 
-    void addSequence(RequestIdType requestId, SizeType32 inputLength, SizeType32 beamWidth,
+    void addSequence(LlmRequest::RequestIdType requestId, SizeType32 inputLength, SizeType32 beamWidth,
         OptionalRef<LlmRequest> llmRequest = std::nullopt) override;
 
-    void addToken(RequestIdType requestId) override;
+    void addToken(LlmRequest::RequestIdType requestId) override;
 
-    void removeSequence(RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest = std::nullopt) override;
+    void removeSequence(LlmRequest::RequestIdType requestId, OptionalRef<LlmRequest const> llmRequest = std::nullopt) override;
 
-    void schedulingReleaseBlocks(RequestIdType requestId) override;
-
-    [[nodiscard]] SizeType32 numPools() const override;
-
-    [[nodiscard]] SizeType32 maxBlocksPerSeq() const override;
-
-    [[nodiscard]] bool enableBlockReuse() const override;
+    void schedulingReleaseBlocks(LlmRequest::RequestIdType requestId);
 
     // Additional methods required by BaseKVCacheManager interface
-    void schedulingRemoveSequence(RequestIdType requestId) override;
+    void schedulingRemoveSequence(LlmRequest::RequestIdType requestId) override;
 
     [[nodiscard]] runtime::ITensor::SharedPtr getBlockPoolPointers() const override;
 
@@ -145,17 +151,17 @@ public:
 
     void getBlockOffsetsOfBatch(runtime::ITensor& output, SizeType32 firstBatchSlotIdx, SizeType32 batchSize, SizeType32 beamWidth) const override;
 
-    [[nodiscard]] SizeType32 copyBlockOffsets(runtime::ITensor& output, SizeType32 outputSlotOffset, RequestIdType requestId) const override;
+    [[nodiscard]] SizeType32 copyBlockOffsets(runtime::ITensor& output, SizeType32 outputSlotOffset, LlmRequest::RequestIdType requestId) const override;
 
     [[nodiscard]] bool isEnableBlockReuse() const override;
 
     [[nodiscard]] bool isUseOneMoreBlock() const override;
 
-    void rewindKVCache(RequestIdType requestId, SizeType32 rewindLengths) override;
+    void rewindKVCache(LlmRequest::RequestIdType requestId, SizeType32 rewindLengths) override;
 
-    [[nodiscard]] GenerationRequest const& getSequence(RequestIdType requestId) const override;
+    [[nodiscard]] GenerationRequest const& getSequence(LlmRequest::RequestIdType requestId) const override;
 
-    [[nodiscard]] GenerationRequest& getSequence(RequestIdType requestId) override;
+    [[nodiscard]] GenerationRequest& getSequence(LlmRequest::RequestIdType requestId) override;
 
     [[nodiscard]] bool isCrossKv() const override;
 
@@ -165,11 +171,11 @@ public:
 
     [[nodiscard]] bool schedulingHasFreeBlocks(SizeType32 numRequired = 1) const override;
 
-    [[nodiscard]] std::vector<std::vector<SizeType32>> const& getCacheBlockIds(RequestIdType requestId) const override;
+    [[nodiscard]] std::vector<std::vector<SizeType32>> const& getCacheBlockIds(LlmRequest::RequestIdType requestId) const override;
 
-    [[nodiscard]] std::vector<std::vector<std::vector<SizeType32>>> getBatchCacheBlockIds(std::vector<RequestIdType> const& requestIds) const override;
+    [[nodiscard]] std::vector<std::vector<std::vector<SizeType32>>> getBatchCacheBlockIds(std::vector<LlmRequest::RequestIdType> const& requestIds) const override;
 
-    [[nodiscard]] std::vector<KVCacheBlock::IdType> getNewlyAllocatedBlockIds(RequestIdType requestId) const override;
+    [[nodiscard]] std::vector<KVCacheBlock::IdType> getNewlyAllocatedBlockIds(LlmRequest::RequestIdType requestId) const override;
 
     [[nodiscard]] runtime::ITensor::SharedPtr getPrimaryPool(SizeType32 layer_idx) const override;
 
