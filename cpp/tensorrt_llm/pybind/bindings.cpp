@@ -53,6 +53,7 @@ namespace tr = tensorrt_llm::runtime;
 namespace tle = tensorrt_llm::executor;
 using SizeType32 = tr::SizeType32;
 using TokenIdType = tr::TokenIdType;
+using RetentionPriority = tle::RetentionPriority;
 template <typename T>
 using OptVec = std::optional<std::vector<T>>;
 
@@ -114,7 +115,10 @@ PYBIND11_MODULE(TRTLLM_PYBIND_MODULE, m)
         return py::make_tuple(config.maxTokens, config.maxAttentionWindowVec, config.sinkTokenLength,
             config.freeGpuMemoryFraction, config.enableBlockReuse, config.useUvm, config.hostCacheSize,
             config.onboardBlocks, config.crossKvCacheFraction, config.secondaryOffloadMinPriority,
-            config.eventBufferMaxSize, config.enablePartialReuse, config.copyOnPartialReuse);
+            config.eventBufferMaxSize, config.enablePartialReuse, config.copyOnPartialReuse,
+            config.enableProactiveEviction, config.primaryFreeBlockThreshold, config.secondaryFreeBlockThreshold,
+            config.proactiveEvictionBatchSize, config.minEvictionIntervalMs, config.maxWaitTimeMs,
+            config.evictionPriorityThreshold, config.enablePreloading, config.preloadBatchSize);
     };
     auto kvCacheConfigSetState = [](py::tuple t)
     {
@@ -122,18 +126,26 @@ PYBIND11_MODULE(TRTLLM_PYBIND_MODULE, m)
             t[1].cast<std::optional<std::vector<SizeType32>>>(), t[2].cast<std::optional<SizeType32>>(),
             t[3].cast<std::optional<float>>(), t[4].cast<bool>(), t[5].cast<bool>(), t[6].cast<std::optional<size_t>>(),
             t[7].cast<bool>(), t[8].cast<std::optional<float>>(), t[9].cast<std::optional<SizeType32>>(),
-            t[10].cast<size_t>(), t[11].cast<bool>(), t[12].cast<bool>());
+            t[10].cast<size_t>(), t[11].cast<bool>(), t[12].cast<bool>(), t[13].cast<bool>(), t[14].cast<SizeType32>(),
+            t[15].cast<SizeType32>(), t[16].cast<SizeType32>(), t[17].cast<SizeType32>(), t[18].cast<SizeType32>(),
+            t[19].cast<RetentionPriority>(), t[20].cast<bool>(), t[21].cast<SizeType32>());
     };
     py::class_<tbk::KvCacheConfig>(m, "KvCacheConfig")
         .def(py::init<std::optional<SizeType32>, std::optional<std::vector<SizeType32>>, std::optional<SizeType32>,
                  std::optional<float>, bool, bool, std::optional<size_t>, bool, std::optional<float>,
-                 std::optional<SizeType32>, size_t, bool, bool>(),
+                 std::optional<SizeType32>, size_t, bool, bool, bool, SizeType32, SizeType32, SizeType32,
+                 SizeType32, SizeType32, RetentionPriority, bool, SizeType32>(),
             py::arg("max_tokens") = py::none(), py::arg("max_attention_window") = py::none(),
             py::arg("sink_token_length") = py::none(), py::arg("free_gpu_memory_fraction") = py::none(),
             py::arg("enable_block_reuse") = false, py::arg("use_uvm") = false, py::arg("host_cache_size") = py::none(),
             py::arg("onboard_blocks") = true, py::arg("cross_kv_cache_fraction") = py::none(),
             py::arg("secondary_offload_min_priority") = py::none(), py::arg("event_buffer_max_size") = 0,
-            py::arg("enable_partial_reuse") = true, py::arg("copy_on_partial_reuse") = true)
+            py::arg("enable_partial_reuse") = true, py::arg("copy_on_partial_reuse") = true,
+            py::arg("enable_proactive_eviction") = false, py::arg("primary_free_block_threshold") = 10,
+            py::arg("secondary_free_block_threshold") = 5, py::arg("proactive_eviction_batch_size") = 5,
+            py::arg("min_eviction_interval_ms") = 100, py::arg("max_wait_time_ms") = 1000,
+            py::arg("eviction_priority_threshold") = 50, py::arg("enable_preloading") = true,
+            py::arg("preload_batch_size") = 3)
         .def_readwrite("max_tokens", &tbk::KvCacheConfig::maxTokens)
         .def_readwrite("max_attention_window", &tbk::KvCacheConfig::maxAttentionWindowVec)
         .def_readwrite("sink_token_length", &tbk::KvCacheConfig::sinkTokenLength)
@@ -147,6 +159,15 @@ PYBIND11_MODULE(TRTLLM_PYBIND_MODULE, m)
         .def_readwrite("event_buffer_max_size", &tbk::KvCacheConfig::eventBufferMaxSize)
         .def_readwrite("enable_partial_reuse", &tbk::KvCacheConfig::enablePartialReuse)
         .def_readwrite("copy_on_partial_reuse", &tbk::KvCacheConfig::copyOnPartialReuse)
+        .def_readwrite("enable_proactive_eviction", &tbk::KvCacheConfig::enableProactiveEviction)
+        .def_readwrite("primary_free_block_threshold", &tbk::KvCacheConfig::primaryFreeBlockThreshold)
+        .def_readwrite("secondary_free_block_threshold", &tbk::KvCacheConfig::secondaryFreeBlockThreshold)
+        .def_readwrite("proactive_eviction_batch_size", &tbk::KvCacheConfig::proactiveEvictionBatchSize)
+        .def_readwrite("min_eviction_interval_ms", &tbk::KvCacheConfig::minEvictionIntervalMs)
+        .def_readwrite("max_wait_time_ms", &tbk::KvCacheConfig::maxWaitTimeMs)
+        .def_readwrite("eviction_priority_threshold", &tbk::KvCacheConfig::evictionPriorityThreshold)
+        .def_readwrite("enable_preloading", &tbk::KvCacheConfig::enablePreloading)
+        .def_readwrite("preload_batch_size", &tbk::KvCacheConfig::preloadBatchSize)
         .def(py::pickle(kvCacheConfigGetState, kvCacheConfigSetState))
         .def("__eq__", &tbk::KvCacheConfig::operator==);
 

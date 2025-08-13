@@ -123,14 +123,19 @@ void initConfigBindings(pybind11::module_& m)
         .def(py::init<bool, std::optional<SizeType32> const&, std::optional<std::vector<SizeType32>> const&,
                  std::optional<SizeType32> const&, std::optional<float> const&, std::optional<size_t> const&, bool,
                  std::optional<float> const&, std::optional<tle::RetentionPriority>, size_t const&,
-                 std::optional<RuntimeDefaults> const&, bool, bool>(),
+                 std::optional<RuntimeDefaults> const&, bool, bool, bool, SizeType32, SizeType32, SizeType32,
+                 SizeType32, SizeType32, tle::RetentionPriority, bool, SizeType32>(),
             py::arg("enable_block_reuse") = true, py::arg("max_tokens") = py::none(),
             py::arg("max_attention_window") = py::none(), py::arg("sink_token_length") = py::none(),
             py::arg("free_gpu_memory_fraction") = py::none(), py::arg("host_cache_size") = py::none(),
             py::arg("onboard_blocks") = true, py::arg("cross_kv_cache_fraction") = py::none(),
             py::arg("secondary_offload_min_priority") = py::none(), py::arg("event_buffer_max_size") = 0, py::kw_only(),
             py::arg("runtime_defaults") = py::none(), py::arg("enable_partial_reuse") = true,
-            py::arg("copy_on_partial_reuse") = true)
+            py::arg("copy_on_partial_reuse") = true, py::arg("enable_proactive_eviction") = false,
+            py::arg("primary_free_block_threshold") = 10, py::arg("secondary_free_block_threshold") = 5,
+            py::arg("proactive_eviction_batch_size") = 5, py::arg("min_eviction_interval_ms") = 100,
+            py::arg("max_wait_time_ms") = 1000, py::arg("eviction_priority_threshold") = 50,
+            py::arg("enable_preloading") = true, py::arg("preload_batch_size") = 3)
         .def_property(
             "enable_block_reuse", &tle::KvCacheConfig::getEnableBlockReuse, &tle::KvCacheConfig::setEnableBlockReuse)
         .def_property("max_tokens", &tle::KvCacheConfig::getMaxTokens, &tle::KvCacheConfig::setMaxTokens)
@@ -152,6 +157,24 @@ void initConfigBindings(pybind11::module_& m)
             &tle::KvCacheConfig::setEnablePartialReuse)
         .def_property("copy_on_partial_reuse", &tle::KvCacheConfig::getCopyOnPartialReuse,
             &tle::KvCacheConfig::setCopyOnPartialReuse)
+        .def_property("enable_proactive_eviction", &tle::KvCacheConfig::getEnableProactiveEviction,
+            &tle::KvCacheConfig::setEnableProactiveEviction)
+        .def_property("primary_free_block_threshold", &tle::KvCacheConfig::getPrimaryFreeBlockThreshold,
+            &tle::KvCacheConfig::setPrimaryFreeBlockThreshold)
+        .def_property("secondary_free_block_threshold", &tle::KvCacheConfig::getSecondaryFreeBlockThreshold,
+            &tle::KvCacheConfig::setSecondaryFreeBlockThreshold)
+        .def_property("proactive_eviction_batch_size", &tle::KvCacheConfig::getProactiveEvictionBatchSize,
+            &tle::KvCacheConfig::setProactiveEvictionBatchSize)
+        .def_property("min_eviction_interval_ms", &tle::KvCacheConfig::getMinEvictionIntervalMs,
+            &tle::KvCacheConfig::setMinEvictionIntervalMs)
+        .def_property("max_wait_time_ms", &tle::KvCacheConfig::getMaxWaitTimeMs,
+            &tle::KvCacheConfig::setMaxWaitTimeMs)
+        .def_property("eviction_priority_threshold", &tle::KvCacheConfig::getEvictionPriorityThreshold,
+            &tle::KvCacheConfig::setEvictionPriorityThreshold)
+        .def_property("enable_preloading", &tle::KvCacheConfig::getEnablePreloading,
+            &tle::KvCacheConfig::setEnablePreloading)
+        .def_property("preload_batch_size", &tle::KvCacheConfig::getPreloadBatchSize,
+            &tle::KvCacheConfig::setPreloadBatchSize)
         .def("fill_empty_fields_from_runtime_defaults", &tle::KvCacheConfig::fillEmptyFieldsFromRuntimeDefaults)
         .def(py::pickle(kvCacheConfigGetstate, kvCacheConfigSetstate));
 

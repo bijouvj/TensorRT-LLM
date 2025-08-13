@@ -32,6 +32,7 @@
 #include "tensorrt_llm/batch_manager/kvCacheConfig.h"
 #include "tensorrt_llm/batch_manager/kvCacheEventManager.h"
 #include "tensorrt_llm/batch_manager/kvCacheManager.h"
+#include "tensorrt_llm/batch_manager/proactiveKvCacheManager.h"
 #include "tensorrt_llm/batch_manager/llmRequest.h"
 #include "tensorrt_llm/batch_manager/logitsPostProcessor.h"
 #include "tensorrt_llm/batch_manager/makeDecodingBatchInputOutput.h"
@@ -537,7 +538,7 @@ void TrtGptModelInflightBatching::adjustMaxAttentionWindow(SizeType32 numPrimary
     }
 }
 
-std::shared_ptr<kv_cache_manager::KVCacheManager> TrtGptModelInflightBatching::createKvCacheManager(
+std::shared_ptr<BaseKVCacheManager> TrtGptModelInflightBatching::createKvCacheManager(
     KvCacheConfig const& kvCacheConfig, SizeType32 blocksInPrimaryPool, SizeType32 blocksInSecondaryPool,
     KvCacheType kvCacheType)
 {
@@ -600,14 +601,45 @@ std::shared_ptr<kv_cache_manager::KVCacheManager> TrtGptModelInflightBatching::c
     }
     auto const enableBlockReuse = kvCacheType == KvCacheType::kSELF ? kvCacheConfig.enableBlockReuse : false;
 
-    auto kvCacheManager = std::make_shared<KVCacheManager>(numKvHeadsPerLayer, sizePerHead, tokensPerBlock,
-        blocksInPrimaryPool, blocksInSecondaryPool, getMaxNumSequences(), getMaxBeamWidth(), maxAttentionWindowVec,
-        temporaryKvCacheLength, getSinkTokenLen(), mRuntime->getStreamPtr(), std::nullopt, enableBlockReuse,
-        kvCacheConfig.onboardBlocks, kvCacheType, kvCacheConfig.secondaryOffloadMinPriority,
-        kvCacheConfig.eventBufferMaxSize > 0
-            ? std::make_unique<kv_cache_manager::KVCacheEventManager>(kvCacheConfig.eventBufferMaxSize)
-            : nullptr,
-        false, kvCacheConfig.enablePartialReuse, kvCacheConfig.copyOnPartialReuse);
+    std::shared_ptr<BaseKVCacheManager> kvCacheManager;
+
+    if (kvCacheConfig.enableProactiveEviction)
+    {
+        // Create ProactiveKVCacheManager with proactive config
+        ProactiveKVCacheManager::ProactiveConfig proactiveConfig;
+        proactiveConfig.primaryFreeBlockThreshold = kvCacheConfig.primaryFreeBlockThreshold;
+        proactiveConfig.secondaryFreeBlockThreshold = kvCacheConfig.secondaryFreeBlockThreshold;
+        proactiveConfig.proactiveEvictionBatchSize = kvCacheConfig.proactiveEvictionBatchSize;
+        proactiveConfig.minEvictionInterval = std::chrono::milliseconds(kvCacheConfig.minEvictionIntervalMs);
+        proactiveConfig.maxWaitTime = std::chrono::milliseconds(kvCacheConfig.maxWaitTimeMs);
+        proactiveConfig.enableProactiveEviction = kvCacheConfig.enableProactiveEviction;
+        proactiveConfig.evictionPriorityThreshold = kvCacheConfig.evictionPriorityThreshold;
+        proactiveConfig.enablePreloading = kvCacheConfig.enablePreloading;
+        proactiveConfig.preloadBatchSize = kvCacheConfig.preloadBatchSize;
+
+        TLLM_LOG_INFO("Creating ProactiveKVCacheManager with proactive eviction enabled");
+        kvCacheManager = std::make_shared<ProactiveKVCacheManager>(numKvHeadsPerLayer, sizePerHead, tokensPerBlock,
+            blocksInPrimaryPool, blocksInSecondaryPool, getMaxNumSequences(), getMaxBeamWidth(), maxAttentionWindowVec,
+            temporaryKvCacheLength, getSinkTokenLen(), mRuntime->getStreamPtr(), std::nullopt, enableBlockReuse,
+            kvCacheConfig.onboardBlocks, kvCacheType, kvCacheConfig.secondaryOffloadMinPriority,
+            kvCacheConfig.eventBufferMaxSize > 0
+                ? std::make_unique<kv_cache_manager::KVCacheEventManager>(kvCacheConfig.eventBufferMaxSize)
+                : nullptr,
+            false, kvCacheConfig.enablePartialReuse, kvCacheConfig.copyOnPartialReuse, proactiveConfig);
+    }
+    else
+    {
+        // Create regular KVCacheManager
+        TLLM_LOG_INFO("Creating regular KVCacheManager");
+        kvCacheManager = std::make_shared<KVCacheManager>(numKvHeadsPerLayer, sizePerHead, tokensPerBlock,
+            blocksInPrimaryPool, blocksInSecondaryPool, getMaxNumSequences(), getMaxBeamWidth(), maxAttentionWindowVec,
+            temporaryKvCacheLength, getSinkTokenLen(), mRuntime->getStreamPtr(), std::nullopt, enableBlockReuse,
+            kvCacheConfig.onboardBlocks, kvCacheType, kvCacheConfig.secondaryOffloadMinPriority,
+            kvCacheConfig.eventBufferMaxSize > 0
+                ? std::make_unique<kv_cache_manager::KVCacheEventManager>(kvCacheConfig.eventBufferMaxSize)
+                : nullptr,
+            false, kvCacheConfig.enablePartialReuse, kvCacheConfig.copyOnPartialReuse);
+    }
 
     auto const& blockManager = kvCacheManager->getBlockManager();
 

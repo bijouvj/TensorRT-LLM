@@ -27,7 +27,13 @@ KvCacheConfig::KvCacheConfig(bool enableBlockReuse, std::optional<SizeType32> co
     std::optional<size_t> const& hostCacheSize, bool onboardBlocks,
     std::optional<FloatType> const& crossKvCacheFraction, std::optional<RetentionPriority> secondaryOffloadMinPriority,
     size_t eventBufferMaxSize, std::optional<tensorrt_llm::runtime::RuntimeDefaults> const& runtimeDefaults,
-    bool enablePartialReuse, bool copyOnPartialReuse)
+    bool enablePartialReuse, bool copyOnPartialReuse,
+    // Proactive KV cache configuration
+    bool enableProactiveEviction, SizeType32 primaryFreeBlockThreshold,
+    SizeType32 secondaryFreeBlockThreshold, SizeType32 proactiveEvictionBatchSize,
+    SizeType32 minEvictionIntervalMs, SizeType32 maxWaitTimeMs,
+    RetentionPriority evictionPriorityThreshold, bool enablePreloading,
+    SizeType32 preloadBatchSize)
     : mEnableBlockReuse(enableBlockReuse)
     , mHostCacheSize(hostCacheSize)
     , mOnboardBlocks(onboardBlocks)
@@ -35,6 +41,15 @@ KvCacheConfig::KvCacheConfig(bool enableBlockReuse, std::optional<SizeType32> co
     , mEventBufferMaxSize{eventBufferMaxSize}
     , mEnablePartialReuse{enablePartialReuse}
     , mCopyOnPartialReuse{copyOnPartialReuse}
+    , mEnableProactiveEviction{enableProactiveEviction}
+    , mPrimaryFreeBlockThreshold{primaryFreeBlockThreshold}
+    , mSecondaryFreeBlockThreshold{secondaryFreeBlockThreshold}
+    , mProactiveEvictionBatchSize{proactiveEvictionBatchSize}
+    , mMinEvictionIntervalMs{minEvictionIntervalMs}
+    , mMaxWaitTimeMs{maxWaitTimeMs}
+    , mEvictionPriorityThreshold{evictionPriorityThreshold}
+    , mEnablePreloading{enablePreloading}
+    , mPreloadBatchSize{preloadBatchSize}
 {
     if (maxTokens)
     {
@@ -191,6 +206,98 @@ void KvCacheConfig::setSecondaryOffloadMinPriority(std::optional<RetentionPriori
 void KvCacheConfig::setEventBufferMaxSize(size_t eventBufferMaxSize)
 {
     mEventBufferMaxSize = eventBufferMaxSize;
+}
+
+// Proactive KV cache configuration getters
+bool KvCacheConfig::getEnableProactiveEviction() const
+{
+    return mEnableProactiveEviction;
+}
+
+SizeType32 KvCacheConfig::getPrimaryFreeBlockThreshold() const
+{
+    return mPrimaryFreeBlockThreshold;
+}
+
+SizeType32 KvCacheConfig::getSecondaryFreeBlockThreshold() const
+{
+    return mSecondaryFreeBlockThreshold;
+}
+
+SizeType32 KvCacheConfig::getProactiveEvictionBatchSize() const
+{
+    return mProactiveEvictionBatchSize;
+}
+
+SizeType32 KvCacheConfig::getMinEvictionIntervalMs() const
+{
+    return mMinEvictionIntervalMs;
+}
+
+SizeType32 KvCacheConfig::getMaxWaitTimeMs() const
+{
+    return mMaxWaitTimeMs;
+}
+
+RetentionPriority KvCacheConfig::getEvictionPriorityThreshold() const
+{
+    return mEvictionPriorityThreshold;
+}
+
+bool KvCacheConfig::getEnablePreloading() const
+{
+    return mEnablePreloading;
+}
+
+SizeType32 KvCacheConfig::getPreloadBatchSize() const
+{
+    return mPreloadBatchSize;
+}
+
+// Proactive KV cache configuration setters
+void KvCacheConfig::setEnableProactiveEviction(bool enableProactiveEviction)
+{
+    mEnableProactiveEviction = enableProactiveEviction;
+}
+
+void KvCacheConfig::setPrimaryFreeBlockThreshold(SizeType32 primaryFreeBlockThreshold)
+{
+    mPrimaryFreeBlockThreshold = primaryFreeBlockThreshold;
+}
+
+void KvCacheConfig::setSecondaryFreeBlockThreshold(SizeType32 secondaryFreeBlockThreshold)
+{
+    mSecondaryFreeBlockThreshold = secondaryFreeBlockThreshold;
+}
+
+void KvCacheConfig::setProactiveEvictionBatchSize(SizeType32 proactiveEvictionBatchSize)
+{
+    mProactiveEvictionBatchSize = proactiveEvictionBatchSize;
+}
+
+void KvCacheConfig::setMinEvictionIntervalMs(SizeType32 minEvictionIntervalMs)
+{
+    mMinEvictionIntervalMs = minEvictionIntervalMs;
+}
+
+void KvCacheConfig::setMaxWaitTimeMs(SizeType32 maxWaitTimeMs)
+{
+    mMaxWaitTimeMs = maxWaitTimeMs;
+}
+
+void KvCacheConfig::setEvictionPriorityThreshold(RetentionPriority evictionPriorityThreshold)
+{
+    mEvictionPriorityThreshold = evictionPriorityThreshold;
+}
+
+void KvCacheConfig::setEnablePreloading(bool enablePreloading)
+{
+    mEnablePreloading = enablePreloading;
+}
+
+void KvCacheConfig::setPreloadBatchSize(SizeType32 preloadBatchSize)
+{
+    mPreloadBatchSize = preloadBatchSize;
 }
 
 void KvCacheConfig::fillEmptyFieldsFromRuntimeDefaults(tensorrt_llm::runtime::RuntimeDefaults runtimeDefaults)

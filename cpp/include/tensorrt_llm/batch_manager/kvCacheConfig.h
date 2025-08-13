@@ -45,7 +45,13 @@ public:
         std::optional<size_t> hostCacheSize = std::nullopt, bool onboardBlocks = true,
         std::optional<float> crossKvCacheFraction = std::nullopt,
         std::optional<SizeType32> secondaryOffloadMinPriority = std::nullopt, size_t eventBufferMaxSize = 0,
-        bool enablePartialReuse = true, bool copyOnPartialReuse = true)
+        bool enablePartialReuse = true, bool copyOnPartialReuse = true,
+        // Proactive KV cache configuration
+        bool enableProactiveEviction = false, SizeType32 primaryFreeBlockThreshold = 10,
+        SizeType32 secondaryFreeBlockThreshold = 5, SizeType32 proactiveEvictionBatchSize = 5,
+        SizeType32 minEvictionIntervalMs = 100, SizeType32 maxWaitTimeMs = 1000,
+        tensorrt_llm::executor::RetentionPriority evictionPriorityThreshold = 50, bool enablePreloading = true,
+        SizeType32 preloadBatchSize = 3)
         : maxTokens{maxTokens}
         , maxAttentionWindowVec{std::move(maxAttentionWindowVec)}
         , sinkTokenLength{sinkTokenLength}
@@ -59,6 +65,15 @@ public:
         , eventBufferMaxSize(eventBufferMaxSize)
         , enablePartialReuse(enablePartialReuse)
         , copyOnPartialReuse(copyOnPartialReuse)
+        , enableProactiveEviction(enableProactiveEviction)
+        , primaryFreeBlockThreshold(primaryFreeBlockThreshold)
+        , secondaryFreeBlockThreshold(secondaryFreeBlockThreshold)
+        , proactiveEvictionBatchSize(proactiveEvictionBatchSize)
+        , minEvictionIntervalMs(minEvictionIntervalMs)
+        , maxWaitTimeMs(maxWaitTimeMs)
+        , evictionPriorityThreshold(evictionPriorityThreshold)
+        , enablePreloading(enablePreloading)
+        , preloadBatchSize(preloadBatchSize)
     {
     }
 
@@ -68,7 +83,12 @@ public:
             kvCacheConfig.getEnableBlockReuse(), false, kvCacheConfig.getHostCacheSize(),
             kvCacheConfig.getOnboardBlocks(), kvCacheConfig.getCrossKvCacheFraction(),
             kvCacheConfig.getSecondaryOffloadMinPriority(), kvCacheConfig.getEventBufferMaxSize(),
-            kvCacheConfig.getEnablePartialReuse(), kvCacheConfig.getCopyOnPartialReuse())
+            kvCacheConfig.getEnablePartialReuse(), kvCacheConfig.getCopyOnPartialReuse(),
+            kvCacheConfig.getEnableProactiveEviction(), kvCacheConfig.getPrimaryFreeBlockThreshold(),
+            kvCacheConfig.getSecondaryFreeBlockThreshold(), kvCacheConfig.getProactiveEvictionBatchSize(),
+            kvCacheConfig.getMinEvictionIntervalMs(), kvCacheConfig.getMaxWaitTimeMs(),
+            kvCacheConfig.getEvictionPriorityThreshold(), kvCacheConfig.getEnablePreloading(),
+            kvCacheConfig.getPreloadBatchSize())
     {
     }
 
@@ -81,7 +101,16 @@ public:
             && crossKvCacheFraction == other.crossKvCacheFraction
             && secondaryOffloadMinPriority == other.secondaryOffloadMinPriority
             && eventBufferMaxSize == other.eventBufferMaxSize && enablePartialReuse == other.enablePartialReuse
-            && copyOnPartialReuse == other.copyOnPartialReuse;
+            && copyOnPartialReuse == other.copyOnPartialReuse
+            && enableProactiveEviction == other.enableProactiveEviction
+            && primaryFreeBlockThreshold == other.primaryFreeBlockThreshold
+            && secondaryFreeBlockThreshold == other.secondaryFreeBlockThreshold
+            && proactiveEvictionBatchSize == other.proactiveEvictionBatchSize
+            && minEvictionIntervalMs == other.minEvictionIntervalMs
+            && maxWaitTimeMs == other.maxWaitTimeMs
+            && evictionPriorityThreshold == other.evictionPriorityThreshold
+            && enablePreloading == other.enablePreloading
+            && preloadBatchSize == other.preloadBatchSize;
     }
 
     friend std::ostream& operator<<(std::ostream& os, KvCacheConfig const& self);
@@ -103,5 +132,16 @@ public:
     size_t eventBufferMaxSize;
     bool enablePartialReuse;
     bool copyOnPartialReuse;
+    
+    // Proactive KV cache configuration
+    bool enableProactiveEviction;
+    SizeType32 primaryFreeBlockThreshold;
+    SizeType32 secondaryFreeBlockThreshold;
+    SizeType32 proactiveEvictionBatchSize;
+    SizeType32 minEvictionIntervalMs;
+    SizeType32 maxWaitTimeMs;
+    tensorrt_llm::executor::RetentionPriority evictionPriorityThreshold;
+    bool enablePreloading;
+    SizeType32 preloadBatchSize;
 };
 } // namespace tensorrt_llm::batch_manager::kv_cache_manager

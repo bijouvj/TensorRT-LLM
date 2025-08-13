@@ -962,7 +962,13 @@ public:
         std::optional<FloatType> const& crossKvCacheFraction = std::nullopt,
         std::optional<RetentionPriority> secondaryOffloadMinPriority = std::nullopt, size_t eventBufferMaxSize = 0,
         std::optional<tensorrt_llm::runtime::RuntimeDefaults> const& runtimeDefaults = std::nullopt,
-        bool enablePartialReuse = true, bool copyOnPartialReuse = true);
+        bool enablePartialReuse = true, bool copyOnPartialReuse = true,
+        // Proactive KV cache configuration
+        bool enableProactiveEviction = false, SizeType32 primaryFreeBlockThreshold = 10,
+        SizeType32 secondaryFreeBlockThreshold = 5, SizeType32 proactiveEvictionBatchSize = 5,
+        SizeType32 minEvictionIntervalMs = 100, SizeType32 maxWaitTimeMs = 1000,
+        RetentionPriority evictionPriorityThreshold = 50, bool enablePreloading = true,
+        SizeType32 preloadBatchSize = 3);
 
     [[nodiscard]] bool getEnableBlockReuse() const;
     [[nodiscard]] bool getEnablePartialReuse() const;
@@ -976,6 +982,15 @@ public:
     [[nodiscard]] bool getOnboardBlocks() const;
     [[nodiscard]] std::optional<RetentionPriority> getSecondaryOffloadMinPriority() const;
     [[nodiscard]] size_t getEventBufferMaxSize() const;
+    [[nodiscard]] bool getEnableProactiveEviction() const;
+    [[nodiscard]] SizeType32 getPrimaryFreeBlockThreshold() const;
+    [[nodiscard]] SizeType32 getSecondaryFreeBlockThreshold() const;
+    [[nodiscard]] SizeType32 getProactiveEvictionBatchSize() const;
+    [[nodiscard]] SizeType32 getMinEvictionIntervalMs() const;
+    [[nodiscard]] SizeType32 getMaxWaitTimeMs() const;
+    [[nodiscard]] RetentionPriority getEvictionPriorityThreshold() const;
+    [[nodiscard]] bool getEnablePreloading() const;
+    [[nodiscard]] SizeType32 getPreloadBatchSize() const;
 
     void setEnableBlockReuse(bool enableBlockReuse);
     void setEnablePartialReuse(bool enablePartialReuse);
@@ -989,6 +1004,15 @@ public:
     void setOnboardBlocks(bool onboardBlocks);
     void setSecondaryOffloadMinPriority(std::optional<RetentionPriority> secondaryOffloadMinPriority);
     void setEventBufferMaxSize(size_t eventBufferMaxSize);
+    void setEnableProactiveEviction(bool enableProactiveEviction);
+    void setPrimaryFreeBlockThreshold(SizeType32 primaryFreeBlockThreshold);
+    void setSecondaryFreeBlockThreshold(SizeType32 secondaryFreeBlockThreshold);
+    void setProactiveEvictionBatchSize(SizeType32 proactiveEvictionBatchSize);
+    void setMinEvictionIntervalMs(SizeType32 minEvictionIntervalMs);
+    void setMaxWaitTimeMs(SizeType32 maxWaitTimeMs);
+    void setEvictionPriorityThreshold(RetentionPriority evictionPriorityThreshold);
+    void setEnablePreloading(bool enablePreloading);
+    void setPreloadBatchSize(SizeType32 preloadBatchSize);
     void fillEmptyFieldsFromRuntimeDefaults(tensorrt_llm::runtime::RuntimeDefaults runtimeDefaults);
 
 private:
@@ -1040,6 +1064,34 @@ private:
 
     /// @brief Whether partially matched blocks that are in use can be reused after copying them
     bool mCopyOnPartialReuse;
+    
+    // Proactive KV cache configuration
+    /// @brief Whether to enable proactive eviction of KV cache blocks
+    bool mEnableProactiveEviction;
+    
+    /// @brief Threshold for free blocks in primary memory before proactive eviction starts
+    SizeType32 mPrimaryFreeBlockThreshold;
+    
+    /// @brief Threshold for free blocks in secondary memory before proactive eviction starts
+    SizeType32 mSecondaryFreeBlockThreshold;
+    
+    /// @brief Number of blocks to proactively evict when thresholds are met
+    SizeType32 mProactiveEvictionBatchSize;
+    
+    /// @brief Minimum time between proactive eviction cycles (milliseconds)
+    SizeType32 mMinEvictionIntervalMs;
+    
+    /// @brief Maximum time to wait for blocks to become available (milliseconds)
+    SizeType32 mMaxWaitTimeMs;
+    
+    /// @brief Priority threshold for proactive eviction (blocks with lower priority will be evicted first)
+    RetentionPriority mEvictionPriorityThreshold;
+    
+    /// @brief Whether to preload blocks from secondary to primary when space becomes available
+    bool mEnablePreloading;
+    
+    /// @brief Number of blocks to preload when space becomes available
+    SizeType32 mPreloadBatchSize;
 };
 
 /// @brief Configuration class for the runtime perf knobs

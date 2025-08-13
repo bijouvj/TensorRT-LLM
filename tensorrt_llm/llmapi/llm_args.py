@@ -589,6 +589,53 @@ class KvCacheConfig(BaseModel, PybindMirror):
         "Whether partially matched blocks that are in use can be reused after copying them."
     )
 
+    # Proactive KV cache configuration
+    enable_proactive_eviction: bool = Field(
+        default=False,
+        description=
+        "Whether to enable proactive eviction of KV cache blocks using a background thread."
+    )
+    primary_free_block_threshold: int = Field(
+        default=10,
+        description=
+        "Threshold for free blocks in primary memory before proactive eviction starts."
+    )
+    secondary_free_block_threshold: int = Field(
+        default=5,
+        description=
+        "Threshold for free blocks in secondary memory before proactive eviction starts."
+    )
+    proactive_eviction_batch_size: int = Field(
+        default=5,
+        description=
+        "Number of blocks to proactively evict when thresholds are met."
+    )
+    min_eviction_interval_ms: int = Field(
+        default=100,
+        description=
+        "Minimum time between proactive eviction cycles (milliseconds)."
+    )
+    max_wait_time_ms: int = Field(
+        default=1000,
+        description=
+        "Maximum time to wait for blocks to become available (milliseconds)."
+    )
+    eviction_priority_threshold: int = Field(
+        default=50,
+        description=
+        "Priority threshold for proactive eviction (blocks with lower priority will be evicted first)."
+    )
+    enable_preloading: bool = Field(
+        default=True,
+        description=
+        "Whether to preload blocks from secondary to primary when space becomes available."
+    )
+    preload_batch_size: int = Field(
+        default=3,
+        description=
+        "Number of blocks to preload when space becomes available."
+    )
+
     def _to_pybind(self):
         return _KvCacheConfig(
             enable_block_reuse=self.enable_block_reuse,
@@ -602,7 +649,16 @@ class KvCacheConfig(BaseModel, PybindMirror):
             secondary_offload_min_priority=self.secondary_offload_min_priority,
             event_buffer_max_size=self.event_buffer_max_size,
             enable_partial_reuse=self.enable_partial_reuse,
-            copy_on_partial_reuse=self.copy_on_partial_reuse)
+            copy_on_partial_reuse=self.copy_on_partial_reuse,
+            enable_proactive_eviction=self.enable_proactive_eviction,
+            primary_free_block_threshold=self.primary_free_block_threshold,
+            secondary_free_block_threshold=self.secondary_free_block_threshold,
+            proactive_eviction_batch_size=self.proactive_eviction_batch_size,
+            min_eviction_interval_ms=self.min_eviction_interval_ms,
+            max_wait_time_ms=self.max_wait_time_ms,
+            eviction_priority_threshold=self.eviction_priority_threshold,
+            enable_preloading=self.enable_preloading,
+            preload_batch_size=self.preload_batch_size)
 
 
 @PybindMirror.mirror_pybind_fields(_ExtendedRuntimePerfKnobConfig)
